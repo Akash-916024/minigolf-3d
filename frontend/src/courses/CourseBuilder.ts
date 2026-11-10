@@ -255,7 +255,7 @@ export function buildCourseFromDefinition(
   for (const loop of def.loops ?? []) {
     const { geometry, vertices, indices } = buildLoopGeometry(loop.radius, loop.width, loop.lateralOffset);
     trackGeo(geometry);
-    const mesh = new THREE.Mesh(geometry, materials.stoneRail);
+    const mesh = new THREE.Mesh(geometry, materials.loopTrack);
     mesh.position.set(...loop.origin);
     mesh.rotation.y = loop.yaw ?? 0;
     mesh.castShadow = true;
@@ -270,7 +270,11 @@ export function buildCourseFromDefinition(
     );
     createdBodies.push(body);
     physics.world.createCollider(
-      RAPIER.ColliderDesc.trimesh(vertices, indices).setFriction(0.18).setRestitution(0.2),
+      RAPIER.ColliderDesc.trimesh(vertices, indices)
+        .setFriction(0.0)
+        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+        .setRestitution(0.0)
+        .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Min),
       body
     );
   }
@@ -293,8 +297,11 @@ export function buildCourseFromDefinition(
     createdBodies.push(body);
     const col = physics.world.createCollider(
       RAPIER.ColliderDesc.trimesh(vertices, indices)
-        .setFriction(tube.surface === 'stone' ? 0.4 : 0.04)
-        .setRestitution(0.25)
+        .setFriction(tube.surface === 'stone' ? 0.4 : 0.02)
+        .setFrictionCombineRule(
+          tube.surface === 'stone' ? RAPIER.CoefficientCombineRule.Average : RAPIER.CoefficientCombineRule.Min
+        )
+        .setRestitution(0.05)
         .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
       body
     );

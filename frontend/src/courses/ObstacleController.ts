@@ -117,7 +117,7 @@ export class ObstacleController {
     for (const handle of this.activeBoosts) {
       const boost = this.boostZones.get(handle);
       if (boost) {
-        ball.applyContinuousForce(
+        ball.applyContinuousAcceleration(
           boost.direction.x * boost.force,
           0,
           boost.direction.y * boost.force,
@@ -233,15 +233,7 @@ export class ObstacleController {
       } else {
         pushDir.set(0, 0, 1);
       }
-      ball.body.wakeUp();
-      ball.body.applyImpulse(
-        {
-          x: pushDir.x * bumper.bounceImpulse,
-          y: 0,
-          z: pushDir.z * bumper.bounceImpulse,
-        },
-        true
-      );
+      ball.applyBumperKick(pushDir.x, pushDir.z, bumper.bounceImpulse);
       bumper.pulse = 1;
       audio.playBumperHit();
       particles.spawnBurst(
@@ -265,3 +257,4 @@ export class ObstacleController {
     return false;
   }
 }
+

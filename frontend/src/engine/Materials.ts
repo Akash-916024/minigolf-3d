@@ -9,6 +9,7 @@ export interface CourseMaterials {
   bumper: THREE.MeshStandardMaterial;
   ice: THREE.MeshPhysicalMaterial;
   tubeIce: THREE.MeshPhysicalMaterial;
+  loopTrack: THREE.MeshStandardMaterial;
   sand: THREE.MeshStandardMaterial;
   water: THREE.MeshPhysicalMaterial;
   cupMetal: THREE.MeshStandardMaterial;
@@ -100,6 +101,15 @@ export function createCourseMaterials(maxAnisotropy: number): CourseMaterials {
     side: THREE.DoubleSide,
   });
 
+  const loopTrack = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    roughness: 0.35,
+    metalness: 0.2,
+    transparent: true,
+    opacity: 0.88,
+    side: THREE.DoubleSide,
+  });
+
   const sand = new THREE.MeshStandardMaterial({
     map: sandColorTex,
     bumpMap: turfBumpTex,
@@ -160,6 +170,7 @@ export function createCourseMaterials(maxAnisotropy: number): CourseMaterials {
     bumper,
     ice,
     tubeIce,
+    loopTrack,
     sand,
     water,
     cupMetal,

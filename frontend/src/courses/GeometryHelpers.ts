@@ -14,7 +14,7 @@ export function buildLoopGeometry(
   radius: number,
   width: number,
   lateralOffset: number,
-  segments = 56
+  segments = 128
 ): TrimeshBuffers {
   const halfW = width * 0.5;
   const curbH = 0.26;
@@ -253,3 +253,4 @@ function computeStableFrames(
   }
   return frames;
 }
+

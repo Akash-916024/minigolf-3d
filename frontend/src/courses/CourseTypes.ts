@@ -132,3 +132,4 @@ export interface HoleDefinition {
   windZones?: WindZoneDef[];
   treeCoords?: Array<[number, number, number]>;
 }
+

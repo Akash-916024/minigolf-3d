@@ -16,12 +16,15 @@ export interface InputCallbacks {
   onInteraction: () => void;
 }
 
-const CANCEL_DEADZONE_PX = 18;
-const MAX_PULL_PX = 175;
+const BALL_GRAB_RADIUS_PX = 115;
+const CANCEL_DEADZONE_PX = 10;
+const MAX_PULL_PX = 185;
 
 /**
- * Unified PointerEvents controller handling desktop mouse (drag-to-aim,
- * right-drag orbit, wheel zoom) and mobile touch (1-finger aim, 2-finger orbit/pinch).
+ * Unified PointerEvents controller:
+ * - Drag starting on/near the ball aims & putts (1%..100% power; drag back to ball cancels).
+ * - Dragging anywhere else on the screen (or right-drag) orbits the camera.
+ * - Wheel / two-finger pinch zooms; two-finger drag orbits.
  */
 export class InputManager {
   private readonly canvas: HTMLCanvasElement;
@@ -31,8 +34,8 @@ export class InputManager {
 
   private readonly pointers = new Map<number, { x: number; y: number }>();
   private mode: 'idle' | 'aim' | 'orbit' | 'pinch' = 'idle';
-  private aimStartScreen = { x: 0, y: 0 };
-  private aimStartWorld = new THREE.Vector3();
+  private ballScreenCenter = { x: 0, y: 0 };
+  private aimOriginWorld = new THREE.Vector3();
   private lastOrbitPos = { x: 0, y: 0 };
   private lastPinchCenter = { x: 0, y: 0 };
   private lastPinchDist = 0;
@@ -89,6 +92,15 @@ export class InputManager {
     this.cameraRig.zoom(e.deltaY * 0.008);
   };
 
+  private projectBallToScreen(ballPos: THREE.Vector3): { x: number; y: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    const projected = ballPos.clone().project(this.camera);
+    return {
+      x: rect.left + (projected.x * 0.5 + 0.5) * rect.width,
+      y: rect.top + (-projected.y * 0.5 + 0.5) * rect.height,
+    };
+  }
+
   private onPointerDown = (e: PointerEvent): void => {
     this.callbacks.onInteraction();
     this.canvas.setPointerCapture?.(e.pointerId);
@@ -106,8 +118,14 @@ export class InputManager {
 
     if (this.pointers.size > 2) return;
 
-    const wantsOrbit = e.button === 2 || e.shiftKey || !this.callbacks.canAim();
-    if (wantsOrbit) {
+    const ballPos = this.callbacks.getBallPosition();
+    const ballScreen = this.projectBallToScreen(ballPos);
+    const distToBallPx = Math.hypot(e.clientX - ballScreen.x, e.clientY - ballScreen.y);
+
+    const forceOrbit = e.button === 2 || e.shiftKey || !this.callbacks.canAim();
+    const grabbedBall = !forceOrbit && distToBallPx <= BALL_GRAB_RADIUS_PX;
+
+    if (!grabbedBall) {
       this.mode = 'orbit';
       this.canvas.className = 'is-orbiting';
       this.lastOrbitPos = { x: e.clientX, y: e.clientY };
@@ -116,10 +134,9 @@ export class InputManager {
 
     this.mode = 'aim';
     this.canvas.className = 'is-aiming';
-    this.aimStartScreen = { x: e.clientX, y: e.clientY };
-    const ballPos = this.callbacks.getBallPosition();
+    this.ballScreenCenter = ballScreen;
+    this.aimOriginWorld.copy(ballPos);
     this.dragPlane.constant = -ballPos.y;
-    this.raycastGroundPlane(e.clientX, e.clientY, this.aimStartWorld);
     this.aimCancelled = true;
     this.currentPower = 0;
   };
@@ -150,8 +167,8 @@ export class InputManager {
     }
 
     if (this.mode === 'aim') {
-      const dxScreen = this.aimStartScreen.x - e.clientX;
-      const dyScreen = this.aimStartScreen.y - e.clientY;
+      const dxScreen = this.ballScreenCenter.x - e.clientX;
+      const dyScreen = this.ballScreenCenter.y - e.clientY;
       const screenPull = Math.hypot(dxScreen, dyScreen);
 
       if (screenPull < CANCEL_DEADZONE_PX) {
@@ -169,12 +186,11 @@ export class InputManager {
       const curWorld = new THREE.Vector3();
       const hitPlane = this.raycastGroundPlane(e.clientX, e.clientY, curWorld);
       if (hitPlane) {
-        const delta = this.aimStartWorld.clone().sub(curWorld).setY(0);
+        const delta = this.aimOriginWorld.clone().sub(curWorld).setY(0);
         if (delta.lengthSq() > 0.0001) {
           this.currentDir.copy(delta.normalize());
         }
       } else {
-        // Fallback to camera-aligned XZ vector if pointer moves above horizon
         const forward = new THREE.Vector3();
         this.camera.getWorldDirection(forward);
         forward.y = 0;
@@ -187,8 +203,9 @@ export class InputManager {
           .normalize();
       }
 
-      const maxPx = Math.min(MAX_PULL_PX, window.innerHeight * 0.28);
-      this.currentPower = Math.max(0.05, Math.min(1, (screenPull - CANCEL_DEADZONE_PX) / maxPx));
+      const maxPx = Math.min(MAX_PULL_PX, window.innerHeight * 0.32);
+      const rawPower = (screenPull - CANCEL_DEADZONE_PX) / maxPx;
+      this.currentPower = Math.max(0.01, Math.min(1, rawPower));
       this.aimCancelled = false;
 
       this.callbacks.onAimUpdate({
@@ -205,7 +222,7 @@ export class InputManager {
     this.pointers.delete(e.pointerId);
 
     if (this.mode === 'aim' && this.pointers.size === 0) {
-      const shouldShoot = !this.aimCancelled && this.currentPower > 0.04 && this.callbacks.canAim();
+      const shouldShoot = !this.aimCancelled && this.currentPower >= 0.01 && this.callbacks.canAim();
       const dir = this.currentDir.clone();
       const power = this.currentPower;
       this.cancelAimVisual();
@@ -246,4 +263,3 @@ export class InputManager {
     return this.raycaster.ray.intersectPlane(this.dragPlane, out) !== null;
   }
 }
-

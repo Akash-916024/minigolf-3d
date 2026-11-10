@@ -3,19 +3,24 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { PhysicsWorld } from './PhysicsWorld';
 
 export const BALL_RADIUS = 0.18;
-const MAX_IMPULSE = 14.5;
-const BASE_LINEAR_DAMPING = 0.32;
-const BASE_ANGULAR_DAMPING = 0.45;
-const BASE_FRICTION = 0.48;
-const REST_LINEAR_EPS = 0.085;
-const REST_ANGULAR_EPS = 0.28;
-const REST_HOLD_SECONDS = 0.32;
-const OUT_OF_BOUNDS_Y = -3.2;
+const MIN_PUTT_SPEED = 0.45;
+const MAX_PUTT_SPEED = 17.5;
+const MAX_WORLD_SPEED = 24.0;
+const BASE_LINEAR_DAMPING = 0.62;
+const BASE_ANGULAR_DAMPING = 0.72;
+const BASE_FRICTION = 0.5;
+const REST_LINEAR_EPS = 0.09;
+const REST_ANGULAR_EPS = 0.32;
+const REST_HOLD_SECONDS = 0.3;
+const OUT_OF_BOUNDS_MIN_Y = -3.0;
+const OUT_OF_BOUNDS_MAX_Y = 22.0;
+const MAX_DRIFT_DISTANCE = 75.0;
+const MAX_STROKE_DURATION = 11.0;
 
 /**
  * Controls the golf ball's Rapier rigid body, Three.js mesh sync,
- * dynamic surface friction/damping (fairway, ice, sand), wind forces,
- * portal cooldowns, and out-of-bounds recovery.
+ * mass-normalized velocity/force application, surface damping (fairway, ice, sand),
+ * wind forces, portal cooldowns, and out-of-bounds recovery.
  */
 export class BallController {
   public readonly mesh: THREE.Mesh;
@@ -26,6 +31,7 @@ export class BallController {
   private readonly startPosition: THREE.Vector3;
   private readonly lastSafePosition = new THREE.Vector3();
   private restTimer = 0;
+  private strokeElapsed = 0;
   private moving = false;
   private sunk = false;
 
@@ -59,7 +65,7 @@ export class BallController {
 
     const colliderDesc = RAPIER.ColliderDesc.ball(BALL_RADIUS)
       .setFriction(BASE_FRICTION)
-      .setRestitution(0.52)
+      .setRestitution(0.48)
       .setDensity(1.4)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     this.collider = physics.world.createCollider(colliderDesc, this.body);
@@ -93,62 +99,91 @@ export class BallController {
     return Math.hypot(v.x, v.y, v.z);
   }
 
-  /** Apply an impulse along a horizontal direction scaled by normalized power (0..1). */
+  /**
+   * Apply a mass-normalized putt velocity along a horizontal direction.
+   * Supports fine low-power putts from 1% (0.01) up to full 100% (1.0).
+   */
   public shoot(direction: THREE.Vector3, power: number): void {
     if (!this.isAtRest()) return;
 
     this.saveSafePosition();
-    const clampedPower = Math.max(0.03, Math.min(1, power));
-    const impulseMag = clampedPower * MAX_IMPULSE;
+    const clampedPower = Math.max(0.01, Math.min(1, power));
+    const targetSpeed =
+      MIN_PUTT_SPEED + Math.pow(clampedPower, 1.45) * (MAX_PUTT_SPEED - MIN_PUTT_SPEED);
+    const mass = this.body.mass();
 
     this.body.wakeUp();
+    this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this.body.applyImpulse(
       {
-        x: direction.x * impulseMag,
+        x: direction.x * targetSpeed * mass,
         y: 0,
-        z: direction.z * impulseMag,
+        z: direction.z * targetSpeed * mass,
       },
       true
     );
     this.moving = true;
     this.restTimer = 0;
+    this.strokeElapsed = 0;
   }
 
-  /** Launch ball from a jump pad if cooldown allows. */
-  public triggerJumpPad(impulse: THREE.Vector3): boolean {
+  /** Launch ball from a jump pad using mass-normalized target launch velocity. */
+  public triggerJumpPad(launchVelocity: THREE.Vector3): boolean {
     if (this.jumpCooldown > 0 || this.sunk) return false;
     this.jumpCooldown = 0.35;
     this.moving = true;
     this.restTimer = 0;
+    this.strokeElapsed = 0;
     this.body.wakeUp();
 
     const lv = this.body.linvel();
-    // Reset downward velocity so jumps feel crisp even when descending a slope
-    if (lv.y < 0) {
-      this.body.setLinvel({ x: lv.x, y: 0, z: lv.z }, true);
-    }
-    this.body.applyImpulse({ x: impulse.x, y: impulse.y, z: impulse.z }, true);
+    this.body.setLinvel(
+      {
+        x: lv.x * 0.4 + launchVelocity.x,
+        y: launchVelocity.y,
+        z: lv.z * 0.4 + launchVelocity.z,
+      },
+      true
+    );
     return true;
   }
 
-  /** Apply continuous directional acceleration from boost pads or wind zones. */
-  public applyContinuousForce(fx: number, fy: number, fz: number, dt: number): void {
+  /** Apply radial velocity kick from a pinball bumper. */
+  public applyBumperKick(dirX: number, dirZ: number, kickSpeed: number): void {
     if (this.sunk) return;
+    const mass = this.body.mass();
     this.body.wakeUp();
-    this.body.applyImpulse({ x: fx * dt, y: fy * dt, z: fz * dt }, true);
+    this.body.applyImpulse(
+      {
+        x: dirX * kickSpeed * mass,
+        y: 0,
+        z: dirZ * kickSpeed * mass,
+      },
+      true
+    );
   }
 
-  /** Apply aerodynamic wind force (stronger while airborne, gentler on turf). */
+  /** Apply continuous acceleration (m/s^2) from boost pads, scaled by ball mass. */
+  public applyContinuousAcceleration(ax: number, ay: number, az: number, dt: number): void {
+    if (this.sunk) return;
+    const mass = this.body.mass();
+    this.body.wakeUp();
+    this.body.applyImpulse({ x: ax * mass * dt, y: ay * mass * dt, z: az * mass * dt }, true);
+  }
+
+  /** Apply aerodynamic wind acceleration (stronger while airborne, gentler on turf). */
   public applyWind(windVec: THREE.Vector3, isGrounded: boolean, dt: number): void {
     if (this.sunk || !this.moving) return;
     if (windVec.lengthSq() < 0.0001) return;
 
-    const factor = isGrounded ? 0.24 : 1.05;
+    const factor = isGrounded ? 0.22 : 0.95;
+    const mass = this.body.mass();
     this.body.applyImpulse(
       {
-        x: windVec.x * factor * dt,
+        x: windVec.x * factor * mass * dt,
         y: 0,
-        z: windVec.z * factor * dt,
+        z: windVec.z * factor * mass * dt,
       },
       true
     );
@@ -160,14 +195,15 @@ export class BallController {
     this.portalCooldown = 0.65;
 
     const v = this.body.linvel();
-    const horizSpeed = Math.max(2.6, Math.hypot(v.x, v.z));
+    const horizSpeed = Math.max(3.2, Math.min(12.0, Math.hypot(v.x, v.z)));
     const dirX = Math.sin(exitYaw);
     const dirZ = Math.cos(exitYaw);
 
     this.body.setTranslation({ x: exitPos.x, y: exitPos.y + BALL_RADIUS + 0.04, z: exitPos.z }, true);
-    this.body.setLinvel({ x: dirX * horizSpeed, y: Math.max(0, v.y * 0.4), z: dirZ * horizSpeed }, true);
+    this.body.setLinvel({ x: dirX * horizSpeed, y: Math.max(0, v.y * 0.25), z: dirZ * horizSpeed }, true);
     this.moving = true;
     this.restTimer = 0;
+    this.strokeElapsed = 0;
     return true;
   }
 
@@ -205,6 +241,7 @@ export class BallController {
   public resetToLastSafe(): void {
     this.moving = false;
     this.restTimer = 0;
+    this.strokeElapsed = 0;
     this.resetSurfaceState();
     this.teleportTo(this.lastSafePosition);
   }
@@ -217,15 +254,27 @@ export class BallController {
     this.sunk = false;
     this.moving = false;
     this.restTimer = 0;
+    this.strokeElapsed = 0;
     this.resetSurfaceState();
     this.lastSafePosition.copy(this.startPosition);
     this.teleportTo(this.startPosition);
   }
 
-  /** Update mesh transform and monitor rest state / out-of-bounds. Returns true if reset OOB. */
+  /** Clamp runaway speeds, sync mesh transform, and monitor rest / OOB states. */
   public update(delta: number, isGrounded: boolean): boolean {
     if (this.portalCooldown > 0) this.portalCooldown = Math.max(0, this.portalCooldown - delta);
     if (this.jumpCooldown > 0) this.jumpCooldown = Math.max(0, this.jumpCooldown - delta);
+
+    // Clamp extreme velocities to keep simulation realistic and prevent tunneling
+    const lvClamp = this.body.linvel();
+    const speedSq = lvClamp.x * lvClamp.x + lvClamp.y * lvClamp.y + lvClamp.z * lvClamp.z;
+    if (speedSq > MAX_WORLD_SPEED * MAX_WORLD_SPEED) {
+      const scale = MAX_WORLD_SPEED / Math.sqrt(speedSq);
+      this.body.setLinvel(
+        { x: lvClamp.x * scale, y: lvClamp.y * scale, z: lvClamp.z * scale },
+        true
+      );
+    }
 
     const pos = this.body.translation();
     const rot = this.body.rotation();
@@ -236,12 +285,22 @@ export class BallController {
       return false;
     }
 
-    if (pos.y < OUT_OF_BOUNDS_Y) {
+    const driftDist = Math.hypot(
+      pos.x - this.lastSafePosition.x,
+      pos.z - this.lastSafePosition.z
+    );
+    if (
+      pos.y < OUT_OF_BOUNDS_MIN_Y ||
+      pos.y > OUT_OF_BOUNDS_MAX_Y ||
+      driftDist > MAX_DRIFT_DISTANCE ||
+      (this.moving && this.strokeElapsed > MAX_STROKE_DURATION && !isGrounded)
+    ) {
       this.resetToLastSafe();
       return true;
     }
 
     if (this.moving) {
+      this.strokeElapsed += delta;
       const lv = this.body.linvel();
       const av = this.body.angvel();
       const linSpeed = Math.hypot(lv.x, lv.y, lv.z);
@@ -254,6 +313,7 @@ export class BallController {
           this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
           this.moving = false;
           this.restTimer = 0;
+          this.strokeElapsed = 0;
         }
       } else {
         this.restTimer = 0;
@@ -269,7 +329,7 @@ export class BallController {
       this.body.setAngularDamping(4.2);
       this.collider.setFriction(0.95);
     } else if (this.iceOverlapCount > 0) {
-      this.body.setLinearDamping(0.05);
+      this.body.setLinearDamping(0.06);
       this.body.setAngularDamping(0.08);
       this.collider.setFriction(0.04);
     } else {

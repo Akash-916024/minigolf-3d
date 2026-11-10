@@ -17,18 +17,18 @@ export const HOLE_01_PINE_STARTER: HoleDefinition = {
   tee: [0, 0.24, 6.4],
   cup: [7.5, 0, -3.0],
   slabs: [
-    // Main tee lane
+    // Main tee lane (x: -2..2, z: -5..8)
     { pos: [0, -0.2, 1.5], size: [4.0, 0.4, 13.0], surface: 'fairway' },
-    // Gentle mid-fairway rise
-    { pos: [0, -0.02, 1.6], size: [3.4, 0.16, 1.8], surface: 'fairway', rotX: 0.09 },
-    { pos: [0, -0.02, -0.15], size: [3.4, 0.16, 1.8], surface: 'fairway', rotX: -0.09 },
-    // Right green wing with recessed cup cutout
+    // Gentle flush mid-fairway rise (ends tuck cleanly below y=0)
+    { pos: [0, -0.075, 1.62], size: [3.6, 0.16, 1.8], surface: 'fairway', rotX: 0.085 },
+    { pos: [0, -0.075, -0.14], size: [3.6, 0.16, 1.8], surface: 'fairway', rotX: -0.085 },
+    // Right green wing with recessed cup cutout (x: 2..9.6, z: -5..-1)
     { pos: [5.8, -0.2, -3.0], size: [7.6, 0.4, 4.0], surface: 'fairway', hasCupCutout: true },
   ],
   rails: [
-    { pos: [-2.12, RAIL_Y, 1.5], size: [RAIL_T, RAIL_H, 13.4], style: 'wood' },
+    { pos: [-2.12, RAIL_Y, 1.5], size: [RAIL_T, RAIL_H, 13.48], style: 'wood' },
     { pos: [0, RAIL_Y, 8.12], size: [4.48, RAIL_H, RAIL_T], style: 'wood' },
-    { pos: [2.12, RAIL_Y, 3.56], size: [RAIL_T, RAIL_H, 9.24], style: 'wood' },
+    { pos: [2.12, RAIL_Y, 3.62], size: [RAIL_T, RAIL_H, 9.24], style: 'wood' },
     { pos: [3.74, RAIL_Y, -5.12], size: [11.96, RAIL_H, RAIL_T], style: 'wood' },
     { pos: [5.86, RAIL_Y, -0.88], size: [7.72, RAIL_H, RAIL_T], style: 'wood' },
     { pos: [9.72, RAIL_Y, -3.0], size: [RAIL_T, RAIL_H, 4.48], style: 'wood' },

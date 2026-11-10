@@ -1,5 +1,6 @@
 export interface HudCallbacks {
   onResetCamera: () => void;
+  onResetBall: () => void;
   onToggleMute: () => boolean;
   onReplayHole: () => void;
   onNextHole: () => void;
@@ -77,12 +78,13 @@ export class HudManager {
 
       <div class="hud-bottom">
         <div class="glass-pill controls-hint">
-          <strong>Putt:</strong> Drag back &amp; release (center cancels)<br />
-          <strong>Camera:</strong> Right-drag / 2-finger orbit &bull; Scroll / Pinch zoom
+          <strong>Putt:</strong> Drag from ball (1%&ndash;100% power)<br />
+          <strong>Camera:</strong> Drag elsewhere / Right-drag orbit &bull; Scroll / Pinch zoom
         </div>
 
         <div class="action-group">
           <button class="hud-btn" id="btn-switch-hole" type="button">Switch Hole</button>
+          <button class="hud-btn" id="btn-reset-ball" type="button">Reset Ball</button>
           <button class="hud-btn" id="btn-reset-cam" type="button">Reset View</button>
           <button class="hud-btn" id="btn-mute" type="button">Sound: On</button>
         </div>
@@ -135,6 +137,7 @@ export class HudManager {
     this.modalBest = root.querySelector('#modal-best')!;
 
     root.querySelector('#btn-reset-cam')?.addEventListener('click', callbacks.onResetCamera);
+    root.querySelector('#btn-reset-ball')?.addEventListener('click', callbacks.onResetBall);
     this.switchBtn.addEventListener('click', callbacks.onSwitchHole);
     this.muteBtn.addEventListener('click', () => {
       const muted = callbacks.onToggleMute();

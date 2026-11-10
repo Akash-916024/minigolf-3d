@@ -158,3 +158,4 @@ export class ParticleSystem {
     this.streakMat.dispose();
   }
 }
+

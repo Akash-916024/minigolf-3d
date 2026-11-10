@@ -50,6 +50,13 @@ async function bootstrap(): Promise<void> {
 
   const hud = new HudManager(hudRoot, {
     onResetCamera: () => cameraRig.reset(),
+    onResetBall: () => {
+      if (ball.isSunk()) return;
+      ball.resetToLastSafe();
+      aimVisualizer.hide();
+      hud.setPowerReadout(false, true, 0);
+      hud.showBanner('Ball reset to last lie');
+    },
     onToggleMute: () => audio.toggleMute(),
     onReplayHole: () => {
       if (!currentCourse) return;
@@ -210,6 +217,7 @@ async function bootstrap(): Promise<void> {
       hud.setWind(activeWind.x, activeWind.z, cameraRig.getYaw());
     }
 
+    aimVisualizer.updateReadyIndicator(ball.isAtRest(), ballPos, elapsed);
     cameraRig.update(ball.getPosition(ballPos), delta);
     sceneManager.render();
   }

@@ -4,11 +4,13 @@ const DOT_COUNT = 18;
 const DOT_SPACING = 0.42;
 
 /**
- * Renders the 3D power ring around the ball and a dotted predictive
- * aim line including the first wall-bounce reflection.
+ * Renders a subtle pulsing ready ring when the ball can be grabbed,
+ * plus the active power ring and dotted bounce-preview aim line.
  */
 export class AimVisualizer {
   private readonly group = new THREE.Group();
+  private readonly readyRing: THREE.Mesh;
+  private readonly readyMaterial: THREE.MeshBasicMaterial;
   private readonly powerRing: THREE.Mesh;
   private readonly ringMaterial: THREE.MeshBasicMaterial;
   private readonly dots: THREE.Mesh[] = [];
@@ -23,6 +25,19 @@ export class AimVisualizer {
 
   constructor(scene: THREE.Scene, wallObjects: THREE.Object3D[]) {
     this.wallObjects = wallObjects;
+
+    const readyGeo = new THREE.RingGeometry(0.28, 0.36, 36);
+    readyGeo.rotateX(-Math.PI / 2);
+    this.readyMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.48,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    this.readyRing = new THREE.Mesh(readyGeo, this.readyMaterial);
+    this.readyRing.visible = false;
+    scene.add(this.readyRing);
 
     const ringGeo = new THREE.RingGeometry(0.3, 0.44, 40);
     ringGeo.rotateX(-Math.PI / 2);
@@ -59,12 +74,25 @@ export class AimVisualizer {
     this.wallObjects = wallObjects;
   }
 
+  public updateReadyIndicator(visible: boolean, ballPos: THREE.Vector3, elapsed: number): void {
+    if (!visible || this.group.visible) {
+      this.readyRing.visible = false;
+      return;
+    }
+    this.readyRing.visible = true;
+    this.readyRing.position.set(ballPos.x, ballPos.y - 0.145, ballPos.z);
+    const pulse = 1 + Math.sin(elapsed * 4.0) * 0.12;
+    this.readyRing.scale.setScalar(pulse);
+    this.readyMaterial.opacity = 0.35 + Math.sin(elapsed * 4.0) * 0.15;
+  }
+
   public hide(): void {
     this.group.visible = false;
   }
 
   public update(ballPos: THREE.Vector3, direction: THREE.Vector3, power: number): void {
     this.group.visible = true;
+    this.readyRing.visible = false;
 
     const ringScale = 0.85 + power * 1.15;
     this.powerRing.position.set(ballPos.x, ballPos.y - 0.14, ballPos.z);
@@ -78,15 +106,14 @@ export class AimVisualizer {
     this.ringMaterial.color.copy(this.tempColor);
     this.dotMaterial.color.copy(this.tempColor);
 
-    const totalLen = 1.4 + power * 6.8;
+    const totalLen = 1.1 + power * 6.8;
     const activeDots = Math.max(2, Math.min(DOT_COUNT, Math.floor(totalLen / DOT_SPACING)));
 
-    // Trace primary ray and compute single bounce off rails
     const origin = new THREE.Vector3(ballPos.x, ballPos.y, ballPos.z);
     const dir = direction.clone().normalize();
     let remaining = activeDots * DOT_SPACING;
     let placed = 0;
-    let stepCursor = 0.45;
+    let stepCursor = 0.42;
 
     for (let bounce = 0; bounce < 2 && placed < activeDots; bounce++) {
       this.raycaster.set(origin, dir);
@@ -126,4 +153,3 @@ export class AimVisualizer {
     }
   }
 }
-
