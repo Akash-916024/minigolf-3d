@@ -23,7 +23,6 @@ export const OBSTACLE_SHOWCASE_HOLE: HoleDefinition = {
   par: 5,
   tee: [0, 0.24, 15.2],
   cup: [14.0, 0, -31.0],
-  globalWind: { x: 0.45, z: -0.25, strength: 1.1 },
   slabs: [
     // Section 1: Tee & Split Approach (x: -2.1..2.1, z: 5.0..17.0)
     { pos: [0, -0.2, 11.0], size: [4.2, 0.4, 12.0], surface: 'fairway' },
@@ -112,7 +111,8 @@ export const OBSTACLE_SHOWCASE_HOLE: HoleDefinition = {
     { pos: [6.0, -0.52, -21.7], size: [7.6, 0.35, 3.6] },
   ],
   windZones: [
-    { pos: [6.0, 1.5, -21.7], size: [6.8, 3.6, 3.8], direction: [1, 0, 0.1], strength: 2.0 },
+    // Elevated exclusively above the jump chasm (y: 0.55..2.95) so table balls stay completely unaffected
+    { pos: [6.0, 1.75, -21.7], size: [7.0, 2.4, 4.2], direction: [1, 0, 0.1], strength: 2.8 },
   ],
   sandZones: [
     { pos: [4.35, 0, -26.8], size: [2.0, 0.2, 3.4] },

@@ -91,7 +91,12 @@ export class ParticleSystem {
     }
   }
 
-  public update(delta: number, windVec: THREE.Vector3, focusPos: THREE.Vector3): void {
+  public update(
+    delta: number,
+    windVec: THREE.Vector3,
+    windCenter: THREE.Vector3,
+    windSpread = new THREE.Vector3(18, 2.8, 18)
+  ): void {
     // Update burst particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -110,7 +115,7 @@ export class ParticleSystem {
       (p.mesh.material as THREE.MeshBasicMaterial).opacity = t * 0.9;
     }
 
-    // Update ambient wind streaks
+    // Update wind streaks strictly within wind zone bounds
     const windSpeed = windVec.length();
     if (windSpeed < 0.05) {
       for (const s of this.windStreaks) {
@@ -128,17 +133,20 @@ export class ParticleSystem {
       if (s.life >= s.maxLife) {
         s.life = 0;
         s.offset.set(
-          (Math.random() - 0.5) * 20,
-          0.4 + Math.random() * 2.8,
-          (Math.random() - 0.5) * 20
+          (Math.random() - 0.5) * windSpread.x * 0.85,
+          (Math.random() - 0.5) * windSpread.y * 0.8,
+          (Math.random() - 0.5) * windSpread.z * 0.85
         );
       }
 
-      s.offset.addScaledVector(windDir, (4.5 + windSpeed * 0.8) * delta);
-      s.mesh.position.copy(focusPos).add(s.offset);
+      s.offset.addScaledVector(windDir, (3.8 + windSpeed * 0.85) * delta);
+      if (Math.abs(s.offset.x) > windSpread.x * 0.5) s.offset.x = -Math.sign(s.offset.x) * windSpread.x * 0.45;
+      if (Math.abs(s.offset.z) > windSpread.z * 0.5) s.offset.z = -Math.sign(s.offset.z) * windSpread.z * 0.45;
+
+      s.mesh.position.copy(windCenter).add(s.offset);
       s.mesh.rotation.set(0, yaw, 0);
 
-      const alpha = Math.sin((s.life / s.maxLife) * Math.PI) * Math.min(0.45, 0.14 + windSpeed * 0.04);
+      const alpha = Math.sin((s.life / s.maxLife) * Math.PI) * Math.min(0.5, 0.18 + windSpeed * 0.05);
       (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, alpha);
     }
   }

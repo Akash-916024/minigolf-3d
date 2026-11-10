@@ -608,6 +608,8 @@ export function buildCourseFromDefinition(
     obstacles.windZones.set(sensorCol.handle, {
       direction: new THREE.Vector3(...wz.direction).normalize(),
       strength: wz.strength,
+      center: new THREE.Vector3(...wz.pos),
+      size: new THREE.Vector3(...wz.size),
     });
   }
 

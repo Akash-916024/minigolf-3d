@@ -172,18 +172,17 @@ export class BallController {
     this.body.applyImpulse({ x: ax * mass * dt, y: ay * mass * dt, z: az * mass * dt }, true);
   }
 
-  /** Apply aerodynamic wind acceleration (stronger while airborne, gentler on turf). */
+  /** Apply aerodynamic wind acceleration strictly while the ball is airborne (jumping). */
   public applyWind(windVec: THREE.Vector3, isGrounded: boolean, dt: number): void {
-    if (this.sunk || !this.moving) return;
+    if (this.sunk || !this.moving || isGrounded) return;
     if (windVec.lengthSq() < 0.0001) return;
 
-    const factor = isGrounded ? 0.22 : 0.95;
     const mass = this.body.mass();
     this.body.applyImpulse(
       {
-        x: windVec.x * factor * mass * dt,
+        x: windVec.x * mass * dt,
         y: 0,
-        z: windVec.z * factor * mass * dt,
+        z: windVec.z * mass * dt,
       },
       true
     );

@@ -23,6 +23,8 @@ export interface BoostZoneEntry {
 export interface WindZoneEntry {
   direction: THREE.Vector3;
   strength: number;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
 }
 
 export interface PinballBumperEntry {
@@ -84,6 +86,39 @@ export class ObstacleController {
       }
     }
     return out;
+  }
+
+  /**
+   * Returns wind vector and spatial bounds for HUD compass & wind-streak VFX
+   * (either global wind or the hole's primary localized jump wind zone).
+   */
+  public getVisualWind(
+    ballPos: THREE.Vector3,
+    outWind = new THREE.Vector3(),
+    outCenter = new THREE.Vector3(),
+    outSpread = new THREE.Vector3()
+  ): boolean {
+    if (this.globalWind.lengthSq() > 0.001) {
+      outWind.copy(this.globalWind);
+      outCenter.copy(ballPos);
+      outSpread.set(18, 2.8, 18);
+      return true;
+    }
+
+    const firstActiveHandle = this.activeWindZones.values().next().value;
+    const zone =
+      (firstActiveHandle !== undefined ? this.windZones.get(firstActiveHandle) : undefined) ??
+      this.windZones.values().next().value;
+
+    if (!zone || zone.strength <= 0.01) {
+      outWind.set(0, 0, 0);
+      return false;
+    }
+
+    outWind.copy(zone.direction).multiplyScalar(zone.strength);
+    outCenter.copy(zone.center);
+    outSpread.copy(zone.size);
+    return true;
   }
 
   /** Step kinematic rigid bodies and apply continuous wind/boost forces before Rapier step. */

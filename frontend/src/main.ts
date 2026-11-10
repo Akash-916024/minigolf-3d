@@ -194,6 +194,8 @@ async function bootstrap(): Promise<void> {
   const clock = new THREE.Clock();
   const ballPos = new THREE.Vector3();
   const activeWind = new THREE.Vector3();
+  const windCenter = new THREE.Vector3();
+  const windSpread = new THREE.Vector3();
 
   function animate(): void {
     requestAnimationFrame(animate);
@@ -212,9 +214,14 @@ async function bootstrap(): Promise<void> {
 
     if (currentCourse) {
       currentCourse.updateVisuals(delta, elapsed);
-      currentCourse.obstacles.getEffectiveWind(activeWind);
-      particles.update(delta, activeWind, ballPos);
-      hud.setWind(activeWind.x, activeWind.z, cameraRig.getYaw());
+      const hasWind = currentCourse.obstacles.getVisualWind(
+        ballPos,
+        activeWind,
+        windCenter,
+        windSpread
+      );
+      particles.update(delta, activeWind, windCenter, windSpread);
+      hud.setWind(hasWind ? activeWind.x : 0, hasWind ? activeWind.z : 0, cameraRig.getYaw());
     }
 
     aimVisualizer.updateReadyIndicator(ball.isAtRest(), ballPos, elapsed);
