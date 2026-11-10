@@ -7,7 +7,7 @@ A realistic 3D browser-based minigolf game built with **Three.js**, **Rapier3D (
 ## Project Roadmap
 
 - [x] **Phase 0 & 1:** Realistic PBR 3D Engine, Rapier3D CCD Physics, Desktop + Mobile Touch Controls, Procedural Audio, Starter Hole & FastAPI Health Backend
-- [ ] **Phase 2:** Modular Track Builder, Obstacles (Jump Pads, Boosts, Loops, Ice Tubes, Moving Doors/Windmills, Portals, Sand/Water) & Wind Physics
+- [x] **Phase 2:** Modular Track Builder, Obstacles (Jump Pads, Boosts, Loops, Ice Tubes, Moving Doors/Windmills, Portals, Sand/Water) & Wind Physics
 - [ ] **Phase 3:** 6 Signature Venues × 6 Holes (36 Holes Total) + Elite Shuffle Mode
 - [ ] **Phase 4:** Single Player, Smart AI Bots & Local Pass-and-Play (2–4 Players)
 - [ ] **Phase 5:** FastAPI WebSocket Online Multiplayer & Persistent Leaderboards

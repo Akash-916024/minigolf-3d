@@ -113,3 +113,4 @@ Each hole is described purely as structured data (`HoleDefinition`):
    - **Sand & Water Hazards:** Sand slows ball dramatically; water triggers splash particles + `+1` penalty reset.
    - **Hole Switching & Cleanup:** Switching between *Hole 1* and the *Obstacle Showcase* leaks zero Rapier bodies or Three.js render artifacts.
 4. **User Sign-off & GitHub Push:** After you test Phase 2 and confirm satisfaction, push the Phase 2 update to `https://github.com/Akash-916024/minigolf-3d`.
+

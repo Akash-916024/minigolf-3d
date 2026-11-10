@@ -135,6 +135,69 @@ body {
   box-shadow: 0 0 10px var(--accent-emerald);
 }
 
+.hud-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wind-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wind-pill.hidden {
+  display: none;
+}
+
+.wind-arrow-wrap {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wind-arrow {
+  width: 14px;
+  height: 14px;
+  color: #7dd3fc;
+  transition: transform 80ms linear;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.secondary-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+
+.secondary-btn:active {
+  transform: scale(0.97);
+}
+
 .hud-center-status {
   align-self: center;
   display: flex;

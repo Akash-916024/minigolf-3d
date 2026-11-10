@@ -14,7 +14,7 @@ export class AimVisualizer {
   private readonly dots: THREE.Mesh[] = [];
   private readonly dotMaterial: THREE.MeshBasicMaterial;
   private readonly raycaster = new THREE.Raycaster();
-  private readonly wallObjects: THREE.Object3D[];
+  private wallObjects: THREE.Object3D[];
 
   private readonly colorLow = new THREE.Color(0x34d399);
   private readonly colorMid = new THREE.Color(0xfbbf24);
@@ -53,6 +53,10 @@ export class AimVisualizer {
 
     this.group.visible = false;
     scene.add(this.group);
+  }
+
+  public setWallObjects(wallObjects: THREE.Object3D[]): void {
+    this.wallObjects = wallObjects;
   }
 
   public hide(): void {

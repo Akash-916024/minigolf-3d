@@ -46,6 +46,10 @@ export class CameraRig {
     );
   }
 
+  public getYaw(): number {
+    return this.yaw;
+  }
+
   public reset(yaw = DEFAULT_YAW): void {
     this.desiredYaw = yaw;
     this.desiredPitch = DEFAULT_PITCH;
